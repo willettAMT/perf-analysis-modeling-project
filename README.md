@@ -27,3 +27,7 @@
 ### Running a benchmark
 
 * `/build/bin/llama-bench -m <path_to_the_model>`
+
+* Note: llama.cpp is built with Qwen 3: https://huggingface.co/Qwen/Qwen3-8B?inference_provider=nscale
+
+
