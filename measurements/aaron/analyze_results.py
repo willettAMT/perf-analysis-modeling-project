@@ -6,10 +6,30 @@ Automatically parses benchmark markdown files and generates analysis
 
 import re
 import os
+import sys
 from pathlib import Path
+from datetime import datetime
 
 # Configuration
 BENCHMARK_DIR = Path.home() / "perf-analysis-modeling-project/measurements/aaron"
+OUTPUT_FILE = BENCHMARK_DIR / f"analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+
+class Tee:
+    """Write to both stdout and file simultaneously"""
+    def __init__(self, filename):
+        self.terminal = sys.stdout
+        self.log = open(filename, 'w')
+    
+    def write(self, message):
+        self.terminal.write(message)
+        self.log.write(message)
+    
+    def flush(self):
+        self.terminal.flush()
+        self.log.flush()
+    
+    def close(self):
+        self.log.close()
 
 def parse_benchmark_file(filepath):
     """Parse a benchmark markdown file and extract performance data"""
@@ -44,7 +64,6 @@ def parse_benchmark_file(filepath):
     is_cpu_only = 'failed to initialize CUDA' in content or 'CPU-Only' in content
     
     # Extract benchmark results
-    # Pattern matches the table rows with performance data
     pattern = r'\|\s*qwen3 8B.*?\|\s*[\d.]+\s*GiB\s*\|\s*[\d.]+\s*B\s*\|\s*[\w,]+\s*\|\s*(\d+)\s*\|(?:\s*[\d.]+\s*\|)?\s*(pp\d+|tg\d+)\s*\|\s*([\d.]+)'
     
     matches = re.finditer(pattern, content)
@@ -251,9 +270,14 @@ def generate_key_findings(results_list):
             print(f"   {gpu_type}: {avg:.2f} t/s (avg)")
 
 def main():
+    # Redirect output to both terminal and file
+    tee = Tee(OUTPUT_FILE)
+    sys.stdout = tee
+    
     print("="*70)
     print("LLAMA.CPP BENCHMARK ANALYSIS")
     print("="*70)
+    print(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"\nScanning directory: {BENCHMARK_DIR}")
     
     # Find all benchmark markdown files
@@ -261,6 +285,8 @@ def main():
     
     if not benchmark_files:
         print(f"\n❌ No benchmark files found in {BENCHMARK_DIR}")
+        tee.close()
+        sys.stdout = tee.terminal
         return
     
     print(f"Found {len(benchmark_files)} benchmark file(s)")
@@ -278,6 +304,8 @@ def main():
     
     if not results_list:
         print("\n❌ No valid results found")
+        tee.close()
+        sys.stdout = tee.terminal
         return
     
     # Run analyses
@@ -290,6 +318,13 @@ def main():
     print("\n" + "="*70)
     print("ANALYSIS COMPLETE")
     print("="*70)
+    print(f"\n✅ Analysis saved to: {OUTPUT_FILE}")
+    
+    # Close file and restore stdout
+    tee.close()
+    sys.stdout = tee.terminal
+    
+    print(f"\n✅ Analysis saved to: {OUTPUT_FILE}")
 
 if __name__ == "__main__":
     main()
